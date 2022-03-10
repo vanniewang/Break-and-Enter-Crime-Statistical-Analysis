@@ -1,0 +1,425 @@
+---
+title: "The Lure of Money: A statistical Analysis of Break and Enters in Toronto"
+author: "Yanlin Huang, Angela Rosulias, Jessica Wang, Nanyi Wang, TUT0202, Group Number: 202-1"
+date: "March 30, 2020"
+output:
+  beamer_presentation:
+    colortheme: orchid
+    fonttheme: structurebold
+    slide_level: 2
+    theme: Pittsburgh
+  slidy_presentation: 
+  ioslides_presentation: 
+    widescreen: true
+    small: true
+fontsize: 10pt
+subtitle: STA130 Poster Project
+---
+
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# echo=FALSE will stop the code chunk from appearing in the knit document
+# warning=FALSE and message=FALSE will stop R messages from appearing in the knit document
+library(tidyverse)
+library("readxl")
+```
+
+## Introduction{.smaller}
+- Context:
+  - Problems to consider:
+    - There are over 43,000 reported occurrences of break and enters (B&Es) in Toronto from 2014 to 2019.
+    - B&Es are difficult to prevent systematically and it is difficult to find crime patterns when looking at raw data.
+    - It can be costly if one attempts to reduce B&Es by increasing the number of patrol police in all neighbourhoods and at all time period.
+  - Potential solution:
+    - Detect the time period of when the B&Es are most likely to happen.
+    - Detect the locations of where the B&Es are most likely to happen.
+    - Increase the number of patrol police at these time period and improve the house security system at these locations.
+
+## Introduction{.smaller}
+
+- Datasets used:
+  - Break_and_enters:
+    - Contains real data about reported B&Es in Toronto from 2014 to 2019 provided by the Analytics and Innovation team at the Toronto Police Service.
+    - The dataset is a subset of the Major Crime Indicators (MCI) of 2014 to 2019.
+  - Demographics_nhs_indicators_2011: 
+    - Includes real data about Toronto’s 140 neighborhoods collected in a voluntary National Household Survey by Statistics Canada in 2011.
+    - The dataset is obtained from City of Toronto’s Open Data Portal.
+    - Specifically, this research will only focus on the “average after-tax family income” indicator and will use the variable to analyse the income level of each neighbourhood. 
+
+## Objectives{.smaller}
+
+- Purpose:
+  - To develop strategies that effectively protect the Toronto citizens against the B&Es by detecting potential crime patterns. 
+
+- Questions:
+  - Is there a greater proportion of daytime B&Es or nighttime B&Es?
+  - Does the number of B&Es vary for neighbourhoods with different average income?
+
+## Data Summary{.smaller}
+
+- Imported break_and_enters and demographics_nhs_indicators_2011 datasets.
+  - "Hood_ID" and "occurrencehour" are the only variables selected (used) in break_and_enters dataset. 
+  - “Hood_ID” and “Average after-tax family income” are the only variables selected (used) in the demographics_nhs_indicators_2011 dataset.
+  - Note: “Hood_ID” is the numerical listing of the neighbourhoods officially assigned to the neighbourhoods.
+
+## Data Summary{.smaller}
+- Arranged the average after-tax income of the neighbourhoods in ascending order and divided the neighbourhoods into three categories (low, mid and high income).
+  - Low income neighbourhoods are the 47 neighbourhoods with the lowest average after-tax incomes (neighbourhoods of average after-tax income in the 33th percentile). 
+  - Mid income neighbourhoods are the 46 neighbourhoods with the medium average after-tax incomes (neighbourhoods of average after-tax income above the 33th percentile but below the 66th percentile). 
+  - High income neighbourhoods are the 47 neighbourhoods with the highest average after-tax incomes (neighbourhoods of average after-tax income at or above the 66th percentile). 
+
+## Data Summary{.smaller}
+
+- Created a new dataset from the original break_and_enters dataset that categorised each observation (B&E) as taking place in a neighbourhood belonging to low, mid or high income (This is stored in new variable “income_range”).
+- In the new dataset, further categorise each observation (B&E) as taking place during daytime or nighttime(This is stored in new variable “day_night”). 
+  - Daytime corresponds to the time period starting from 6am to before 6pm. 
+  - Nighttime corresponds to the time period starting from 6pm to before 6am. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE}
+# Load the TPS break in data
+break_and_enters <- read_csv("break_and_enters.csv")
+demographics <- read_excel("demographics-nhs-indicators-2011.xlsx")
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# Select only the variables that will be used
+income <- demographics %>% select(Hood_ID, `Average after-tax family income`)
+# Find the average after-tax family income at the 33th percentile and the average after-tax family income at the 66th percentile
+quantiles <- quantile(income$`Average after-tax family income`, c(1/3, 2/3))
+low_bar <- 67757.67
+mid_bar <- 88821
+# Categorize each neighbourhood as belonging to low, mid or high income neighbourhoods
+income_arrange <- income %>% mutate(income_range = ifelse(`Average after-tax family income` < low_bar, 'low', 'other'))
+income_arrange <- income_arrange %>% mutate(income_range = ifelse(`Average after-tax family income` < mid_bar & income_range == 'other', 'mid', income_range))   
+income_arrange <- income_arrange %>% mutate(income_range = ifelse(income_range == 'other', 'high', income_range))
+# Identify the low income neighbourhoods by Hood ID
+low <- c(2, 5, 13, 21, 22, 24, 25, 26, 27, 28, 30, 35, 36, 43, 44, 53, 55, 61, 72, 74, 78, 83, 85, 91, 108, 109, 110, 111, 112, 113, 115, 116, 117, 118, 121, 124, 125, 126, 127, 129, 130, 132, 135, 136, 137, 138, 139)
+# Categorize each B&E as taking place in a low income neighbourhood or not
+break_and_enters_new <-break_and_enters %>% mutate(income_range = ifelse(Hood_ID %in% low, 'low', 'other'))
+# Identify the high income neighbourhoods by Hood ID
+mid <- c(1, 3, 4, 6, 7, 8, 11, 14, 17, 18, 19, 20, 23, 29, 31, 32, 34, 37, 45, 46, 47, 48, 50, 51, 54, 57, 59, 60, 65, 66, 69, 70, 73, 75, 81, 84, 86, 90, 92, 93, 107, 119, 120, 123, 128, 131)
+# Categorize each B&E as taking place in a mid income neighbourhood or not
+break_and_enters_new <- break_and_enters_new %>% mutate(income_range= ifelse(Hood_ID %in% mid, 'mid', income_range))
+# Categorize each B&E as taking place in a high income neighbourhood or not
+break_and_enters_new <- break_and_enters_new %>% mutate(income_range = ifelse(!(Hood_ID %in% low | Hood_ID %in% mid), 'high', income_range))
+```
+
+## Statistical Methods{.smaller}
+
+- Conducted a one-sided hypothesis test for each category of neighbourhoods (low, mid, high income) to test whether the proportion of daytime B&Es is the same as the proportion of nighttime B&Es.
+  - Null hypothesis: the proportion of daytime B&Es is equal to 0.5
+  - Alternative hypothesis: the proportion of daytime B&Es is greater than 0.5 
+- Created a bootstrap sampling distribution for the true proportion of B&Es taking place in the low/mid/high income neighbourhoods out of all the B&Es.
+  - Constructed a confidence interval at a 95% confidence level for each of the 3 bootstrap sampling distribution.
+
+## Statistical Methods{.smaller}
+
+Hypotheses for the Hypothesis Tests
+$$H_0: p_d = 0.5$$
+$$H_A: p_d > 0.5$$
+where $$p_d$$ is the true proportion of daytime B&Es.
+
+## Results{.smaller}
+
+Low Income Neighbourhoods: Hypothesis Test
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# Create a dataframe with only B&Es taking place in low income neighbourhoods
+sample_statistic_low <- break_and_enters_new %>% filter(income_range == 'low')
+sample_statistic_low <- sample_statistic_low %>% mutate(day_night = ifelse(occurrencehour < 18 & occurrencehour >= 6, 'day', 'night'))
+sample_statistic_low %>% select(Hood_ID, day_night) %>%
+  group_by(day_night)%>%
+  summarise(n = n())%>%
+  mutate(prop = n / sum(n))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# Calculate the sample statistic
+y <- as.numeric(
+  sample_statistic_low %>%
+    mutate(day_night = ifelse(occurrencehour < 18 & occurrencehour >= 6,'day', 'night'))%>% select(Hood_ID, day_night) %>%
+  group_by(day_night)%>%
+  summarise(n = n())%>%
+  mutate(prop = n / sum(n)) %>% filter(day_night == "day") %>% select(prop) 
+  )
+y
+```
+
+```{r fig.height = 4, echo=FALSE, message=FALSE, warning=FALSE}
+set.seed(1344)
+repetition <- 10000
+simulated_stats1 <- rep(NA, repetition)
+sample_size <- 13573
+
+# Simulated samples under the null hypothesis
+for (i in 1: repetition){
+  new_sim <- sample(c("day", "night"),
+                    size  = sample_size,
+                    prob = c(0.5, 0.5),
+                    replace = TRUE)
+  sim_p <- sum(new_sim == "day")/sample_size
+  simulated_stats1[i] <- sim_p
+}
+dat <- data_frame(simulated_stats1)
+dat %>% 
+  ggplot(aes(x = simulated_stats1)) + geom_histogram(bins = 15, color = "black", fill = "darkolivegreen3") + labs(x = "Simulated propotion of daytime B&Es assuming null hypothesis", title = "  One-sided hypothesis test for a single proportion") + geom_vline(xintercept = y, colour = "red")
+```
+
+Fig. 1. Estimated sampling distribution of sample proportions of daytime B&Es in low income neighbourhoods of size 13573, under the assumption that the true proportion of daytime B&E is 0.5. Red line represents the sample proportion of daytime B&Es (0.52) calculated from the break_and_enters dataset. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# Calculate the p-value
+sum(simulated_stats1 >= y)/repetition
+```
+
+
+## Results{.smaller}
+
+Mid Income Neighbourhoods: Hypothesis Test
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# Create a dataframe with only B&Es taking place in mid income neighbourhoods
+sample_statistic_mid <- break_and_enters_new %>% filter(income_range == 'mid')
+sample_statistic_mid <- sample_statistic_mid %>% mutate(day_night = ifelse(occurrencehour < 18 & occurrencehour >= 6, 'day', 'night'))
+sample_statistic_mid %>% select(Hood_ID, day_night) %>%
+  group_by(day_night)%>%
+  summarise(n = n())%>%
+  mutate(prop = n / sum(n))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# Calculate the sample statistic
+t <- as.numeric(
+  sample_statistic_mid %>%
+    mutate(day_night = ifelse(occurrencehour < 18 & occurrencehour >= 6,'day', 'night'))%>% select(Hood_ID, day_night) %>%
+  group_by(day_night)%>%
+  summarise(n = n())%>%
+  mutate(prop = n / sum(n)) %>% filter(day_night == "day") %>% select(prop) 
+  )
+t
+```
+
+```{r fig.height = 4, echo=FALSE, message=FALSE, warning=FALSE}
+set.seed(2222)
+repetition <- 10000
+simulated_stats2 <- rep(NA, repetition)
+sample_size <- 14940
+
+# Simulated samples under the null hypothesis
+for (i in 1: repetition){
+  new_sim <- sample(c("day", "night"),
+                    size  = sample_size,
+                    prob = c(0.5, 0.5),
+                    replace = TRUE)
+  sim_p <- sum(new_sim == "day")/sample_size
+  simulated_stats2[i] <- sim_p
+}
+dat2 <- data_frame(simulated_stats2)
+dat2 %>% 
+  ggplot(aes(x = simulated_stats2)) + geom_histogram(bins = 15, color = "black", fill = "darkolivegreen3") + labs(x = "Simulated propotion of daytime B&Es assuming null hypothesis", title = "  One-sided hypothesis test for a single proportion") + geom_vline(xintercept = t, colour = "red")
+```
+
+Fig. 2. Estimated sampling distribution of sample proportions of daytime B&Es in mid income neighbourhoods of size14940, under the assumption that the true proportion of daytime B&E is 0.5. Red line represents the sample proportion of daytime B&Es (0.47) calculated from the break_and_enters dataset. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# Calculate the p-value
+sum(simulated_stats2 >= t)/repetition
+```
+
+## Results{.smaller}
+
+High Income Neighbourhoods: Hypothesis Test
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# Create a dataframe with only B&Es taking place in high income neighbourhoods
+sample_statistic_high <- break_and_enters_new %>% filter(income_range == 'high') 
+sample_statistic_high <- sample_statistic_high %>% mutate(day_night = ifelse(occurrencehour < 18 & occurrencehour >= 6, 'day', 'night'))
+sample_statistic_high %>% select(Hood_ID, day_night) %>%
+  group_by(day_night)%>%
+  summarise(n = n())%>%
+  mutate(prop = n / sum(n))
+```
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# Calculate the sample statistic
+t2 <- as.numeric(
+  sample_statistic_high %>%
+    mutate(day_night = ifelse(occurrencehour < 18 & occurrencehour >= 6,'day', 'night'))%>% select(Hood_ID, day_night) %>%
+  group_by(day_night)%>%
+  summarise(n = n())%>%
+  mutate(prop = n / sum(n)) %>% filter(day_night == "day") %>% select(prop) 
+  )
+t2
+```
+
+```{r fig.height = 4, echo=FALSE, message=FALSE, warning=FALSE}
+set.seed(2222)
+repetition <- 10000
+simulated_stats3 <- rep(NA, repetition)
+sample_size <- 14789
+
+# Simulated samples under the null hypothesis
+for (i in 1: repetition){
+  new_sim <- sample(c("day", "night"),
+                    size  = sample_size,
+                    prob = c(0.5, 0.5),
+                    replace = TRUE)
+  sim_p <- sum(new_sim == "day")/sample_size
+  simulated_stats3[i] <- sim_p
+}
+dat2 <- data_frame(simulated_stats3)
+dat2 %>% 
+  ggplot(aes(x = simulated_stats3)) + geom_histogram(bins = 15, color = "black", fill = "darkolivegreen3") + labs(x = "Simulated propotion of daytime B&Es assuming null hypothesis", title = "  One-sided hypothesis test for a single proportion") + geom_vline(xintercept = t2, colour = "red")
+```
+
+Fig. 3. Estimated sampling distribution of sample proportions of daytime B&Es in high income neighbourhoods of size 14789, under the assumption that the true proportion of daytime B&E is 0.5. Red line represents the sample proportion of daytime B&Es (0.48) calculated from the break_and_enters dataset.
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# Calculate the p-value
+sum(simulated_stats3 >= t2)/repetition
+```
+
+## Results{.smaller}
+
+Result Summary for Hypothesis Tests
+
+- The p-value is the probability of observing proportions of daytime B&Es that are at least as extreme as the test statistics under the assumption that the proportion of daytime B&Es is 0.5. 
+- This is a one-sided hypothesis test so the p-value only considers data that are greater than or equal to the test statistic. 
+  - p-value for low-income neighbourhood hypothesis test is 0 by calculation but can also be observed from Fig.1, as there is no value in the estimated sampling distribution that is greater than or equal to 0.52 (the test statistic).
+  - p-value for mid-income neighbourhood hypothesis test is 1 by calculation but can also be observed from Fig.2, as all values in the estimated sampling distribution are greater than 0.47 (the test statistic).
+  - p-value for high-income neighbourhood hypothesis test is 1 by calculation but can also be observed from Fig.3, as all values in the estimated sampling distribution are greater than 0.48 (the test statistic).
+
+## Results{.smaller}
+
+Low Income Neighbourhoods: Bootstrap Sampling Distribution
+```{r fig.height = 4, echo=FALSE, message=FALSE, warning=FALSE}
+# Bootstrapping for the proportion of B&Es taking place in low income neighbourhoods
+set.seed(2355)
+boot_prop <- rep(NA, 1000)
+size_num <- as.numeric(break_and_enters_new %>% summarise(n()))
+for (i in 1:1000){
+  boot_samp <- break_and_enters_new %>% sample_n(size = size_num, replace = TRUE)
+  boot_prop[i] <- as.numeric(boot_samp %>% 
+                               summarize(p_low= sum(income_range ==
+                                                      "low")/size_num))}
+boot_prop <- tibble(p_low = boot_prop) 
+boot_prop %>% ggplot(aes(x=p_low))+ geom_histogram(bins = 15, color ="black", fill = "darkolivegreen3") + geom_vline(xintercept = quantile(boot_prop$p_low, c(0.025, 0.975)), colour = "red") + labs(x= "Proportions of low income neighbourhoods B&Es from bootstrap samples", title = "  Bootstrap sampling distribution for the proportion of low income neighbourhoods B&Es")
+```
+
+Fig. 4. Bootstrap sampling distribution of sample proportions of B&Es that occurred in low income neighbourhoods with sample size 43302. 
+As indicated by the red lines, the interval that is the middle 95% of our bootstrap distribution is [0.3090377, 0.3176995]. 
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include= FALSE}
+# 95% confidence interval
+quantile(boot_prop$p_low, c(0.025, 0.975))
+```
+
+## Results{.smaller}
+
+Mid Income Neighbourhoods: Bootstrap Sampling Distribution
+```{r fig.height = 4, echo=FALSE, message=FALSE, warning=FALSE}
+# Bootstrapping for the proportion of B&Es taking place in mid income neighbourhoods
+set.seed(2355)
+boot_prop <- rep(NA, 1000)
+size_num <- as.numeric(break_and_enters_new %>% summarise(n()))
+for (i in 1:1000){
+  boot_samp <- break_and_enters_new %>% sample_n(size = size_num, replace = TRUE)
+  boot_prop[i] <- as.numeric(boot_samp %>% 
+                               summarize(p_mid= sum(income_range ==
+                                                      "mid")/size_num))}
+boot_prop <- tibble(p_mid = boot_prop) 
+boot_prop %>% ggplot(aes(x=p_mid))+ geom_histogram(bins = 15, color ="black", fill = "darkolivegreen3") + geom_vline(xintercept = quantile(boot_prop$p_mid, c(0.025, 0.975)), color = "red") + labs(x= "Proportions of mid income neighbourhoods B&Es from bootstrap samples", title = "  Bootstrap sampling distribution for the proportion of mid income neighbourhoods B&Es")
+```
+
+Fig. 5. Bootstrap sampling distribution of sample proportions of B&Es that occurred in mid income neighbourhoods with sample size 43302. 
+As indicated by the red lines, the interval that is the middle 95% of our bootstrap distribution is [0.3404918, 0,349703].
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# 95% confidence interval
+quantile(boot_prop$p_mid, c(0.025, 0.975))
+```
+
+
+## Results{.smaller}
+
+High Income Neighbourhoods: Bootstrap Sampling Distribution
+```{r fig.height = 4, echo=FALSE, message=FALSE, warning=FALSE}
+# Bootstrapping for the proportion of B&Es taking place in high income neighbourhoods
+set.seed(2355)
+boot_prop <- rep(NA, 1000)
+size_num <- as.numeric(break_and_enters_new %>% summarise(n()))
+for (i in 1:1000){
+  boot_samp <- break_and_enters_new %>% sample_n(size = size_num, replace = TRUE)
+  boot_prop[i] <- as.numeric(boot_samp %>% 
+                               summarize(p_high= sum(income_range ==
+                                                      "high")/size_num))}
+boot_prop <- tibble(p_high = boot_prop) 
+boot_prop %>% ggplot(aes(x=p_high))+ geom_histogram(bins = 15, color ="black", fill = "darkolivegreen3") + geom_vline(xintercept = quantile(boot_prop$p_high, c(0.025, 0.975)), color = "red") + labs(x= "Proportions of high income neighbourhoods B&Es from bootstrap samples", title = "  Bootstrap sampling distribution for the proportion of high income neighbourhoods B&Es")
+```
+
+Fig. 6. Bootstrap sampling distribution of sample proportions of B&Es that occurred in high income neighbourhoods with sample size 43302. 
+As indicated by the red lines, the interval that is the middle 95% of our bootstrap distribution is [0.3368643, 0.345807].
+
+```{r, echo=FALSE, message=FALSE, warning=FALSE, include = FALSE}
+# 95% confidence interval
+quantile(boot_prop$p_high, c(0.025, 0.975))
+```
+
+
+## Conclusion: Hypothesis Tests{.smaller}
+- Question to answer: Is there a greater proportion of daytime B&Es or nighttime B&Es?
+- There is a very strong evidence against the null hypothesis that states the proportion of daytime B&Es is the same as the proportion of nighttime B&Es in low income neighbourhoods.
+  - In other words, there is a very strong evidence supporting the idea that the proportion of daytime B&Es is greater than the proportion of nighttime B&Es in low income neighbourhoods.
+- There is no evidence against the null hypothesis that states the proportion of daytime B&Es is the same as the proportion of nighttime B&Es in mid income neighbourhoods.
+- There is no evidence against the null hypothesis that states the proportion of daytime B&Es is the same as the proportion of nighttime B&Es in high income neighbourhoods.
+
+## Conclusion: Hypothesis Tests{.smaller}
+
+Implications
+
+- Since higher income communities tend to have better security systems, the results on the previous slide might seem counterintuitive at first glance. One might expect the proportion of daytime and nighttime B&Es to be different for mid and high income neighbourhoods since the criminals are usually more prudent and more thoughtful when approaching neighbourhoods with potentially better security systems. 
+- A possible interpretation of why low income neighbourhoods have a greater proportion of daytime B&Es is that low income families tend to be out working during daytime, leaving the house empty and open for break-ins.
+- This is also true for families in middle and high income neighbourhoods but they also have the privilege to hire housekeepers or baby-sitters during daytime. In this case, the families’ personal schedules matter more to the criminals than whether it is daytime or nighttime. This explains the similar proportion of daytime and nighttime B&E’s in mid and high income neighbourhoods. 
+
+## Conclusion: Bootstrap Samples{.smaller}
+- Question to answer: Does the number of B&Es vary for neighbourhoods with different average income?
+- We are 95% confident that the true proportion of B&Es happening in low income neighbourhoods is in the interval [0.3090377, 0.3176995] (as shown in Fig.3).
+- We are 95% confident that the true proportion of B&Es happening in mid income neighbourhoods is in the interval [0.3404918, 0,349703] (as shown in Fig.4).
+- We are 95% confident that the true proportion of B&Es happening in high income neighbourhoods is in the interval [0.3368643, 0.345807] (as shown in Fig.5).
+
+
+## Conclusion: Bootstrap Samples{.smaller}
+
+Implications
+
+- The values in the interval [0.3404918, 0,349703] are strictly larger than the values in the interval [0.3090377, 0.3176995] (no overlap). So the proportion of B&Es in low income neighbourhoods is slightly lower than the proportion of B&Es in mid income neighbourhoods. 
+- Similarly, the values in the interval [0.3368643, 0.345807] are strictly larger than the values in the interval [0.3090377, 0.3176995] (no overlap). So the proportion of B&Es in low income neighbourhoods is also slightly lower than the proportion of B&Es in high income neighbourhoods. 
+- Since the interval [0.3404918, 0,349703] overlaps with the interval [0.3368643, 0.345807]. We don’t know if the difference between the two proportions is statistically significant or not. Thus, no conclusion can be drawn between the proportion of B&Es in mid income neighbourhoods and the proportion of B&Es in high income neighbourhoods without further tests. 
+- A potential interpretation of higher proportions of B&Es in mid and high income neighbourhoods is that the criminals are attracted to the wealth at these locations. 
+
+## Conclusion{.smaller}
+
+Potential strategies given the conclusion drawn from the hypothesis tests and the bootstrap sampling distributions:
+
+- Enhance security measures in low income neighbourhoods during daytime.
+- Inform the residents of low income neighbourhoods about the higher chance of daytime B&Es.
+- Shift some nighttime security resources from low income neighbourhoods to mid and high income neighbourhoods.
+- Improve the overall security systems in both mid and high income neighbourhoods.
+
+
+## Limitations and Improvements{.smaller}
+
+- Limitations:
+  - Due to the offset of the occurrence locations in the break_and_enters dataset for privacy concerns, the neighbourhoods recorded in the dataset might not reflect the exact count of B&E occurrences within these geographies. 
+  - The demographics_nhs_indicators_2011 dataset might not be representative of the whole population since the data only reflects the kinds of individuals who are inclined to participate in the survey.
+  - Since the demographics_nhs_indicators_2011 dataset was recorded in 2011, it could be out of date. The neighbourhoods that are categorized as low/mid/high income according to the average income in 2011 might incorrectly represent the financial status in these areas in 2014 and beyond. 
+  - Even though the neighbourhoods are evenly divided into low, mid and high income neighbourhoods (47 low, 46 mid and 47 high), the total houses within these geological regions might be uneven. 
+    - E.g. the mid income neighbourhoods might contain significantly more houses than the other two categories. Consequently, B&Es are more likely to happen in mid income neighbourhoods simply because there are more houses in the areas instead of due to the income level of the neighbourhoods.
+
+
+  
+## Limitations and Improvements{.smaller}
+
+- Potential Improvements:
+  - Since the Demographics_nhs_indicators_2011 dataset might be out of date, referring to a more recent dataset will better represent the financial status of the neighbourhoods and so that the B&E pattern identified will be more accurate. 
+  - The bootstrap simulation in this research has a relatively small number of repetitions (1000 times) due to the excess running time required for large repetitions. If time permits, increasing the number of repetitions to 10000 times will result in an estimated sampling distribution that is closer to the true sampling distribution.
+  - Since the confidence interval constructed for the proportion of B&Es happening in mid income neighbourhoods overlaps with the confidence interval constructed for the proportion of B&Es happening in high income neighbourhoods, we cannot draw any conclusion directly from the result. A possible solution is to conduct a hypothesis test to further compare the proportion of B&Es in mid income neighbourhoods and in high income neighbourhoods. 
+
+
